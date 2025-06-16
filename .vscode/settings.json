@@ -1,0 +1,55 @@
+{
+  // GitHub Copilot "YOLO Mode" Settings
+  "github.copilot.enable": {
+    "*": true,
+    "yaml": true,
+    "plaintext": true,
+    "markdown": true,
+    "csharp": true,
+    "json": true,
+    "xml": true
+  },
+    // More aggressive inline suggestions
+  "github.copilot.advanced": {},
+  
+  // Editor settings for better Copilot experience
+  "editor.inlineSuggest.enabled": true,
+  "editor.inlineSuggest.showToolbar": "always",
+  "editor.suggest.snippetsPreventQuickSuggestions": false,
+  "editor.suggest.showInlineDetails": true,
+  "editor.acceptSuggestionOnCommitCharacter": true,
+  "editor.acceptSuggestionOnEnter": "smart",
+  "editor.suggestSelection": "first",
+  "editor.tabCompletion": "on",
+  "editor.wordBasedSuggestions": "allDocuments",
+  "editor.quickSuggestions": {
+    "other": "on",
+    "comments": "on",
+    "strings": "on"
+  },
+  "editor.quickSuggestionsDelay": 0,
+  
+  // Auto-completion settings
+  "editor.suggest.insertMode": "replace",
+  "editor.suggest.filterGraceful": true,
+  "editor.suggest.localityBonus": true,
+  "editor.suggest.shareSuggestSelections": true,
+  "editor.parameterHints.enabled": true,
+  "editor.parameterHints.cycle": true,
+  
+  // IntelliSense settings for C#
+  "omnisharp.enableEditorConfigSupport": true,
+  "omnisharp.enableImportCompletion": true,
+  "omnisharp.enableRoslynAnalyzers": true,
+  
+  // Auto-save for faster feedback
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+  // Terminal integration
+  "terminal.integrated.suggest.enabled": true,
+  "terminal.integrated.enableVisualBell": false,
+  
+  // Copilot Chat settings
+  "github.copilot.chat.followUps": "always",
+  "github.copilot.chat.welcomeMessage": "always"
+}

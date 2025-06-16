@@ -1,0 +1,36 @@
+[
+  // Enhanced Copilot keybindings for "YOLO mode"
+  {
+    "key": "ctrl+shift+i",
+    "command": "github.copilot.generate",
+    "when": "editorTextFocus && !editorReadonly"
+  },
+  {
+    "key": "ctrl+shift+enter",
+    "command": "github.copilot.acceptCursorPanelSolution",
+    "when": "github.copilot.panelVisible"
+  },
+  {
+    "key": "alt+\\",
+    "command": "github.copilot.triggerInlineCompletion",
+    "when": "editorTextFocus && !editorReadonly"
+  },
+  {
+    "key": "ctrl+shift+a",
+    "command": "github.copilot.acceptInlineSuggestion",
+    "when": "github.copilot.inlineSuggestionVisible"
+  },
+  {
+    "key": "ctrl+shift+c",
+    "command": "workbench.panel.chat.view.copilot.focus"
+  },
+  {
+    "key": "ctrl+shift+/",
+    "command": "github.copilot.toggleCopilot"
+  },
+  {
+    "key": "tab",
+    "command": "github.copilot.acceptInlineSuggestion",
+    "when": "github.copilot.inlineSuggestionVisible && !editorTabMovesFocus && !hasOtherSuggestions && !hasSnippetCompletions && !inSnippetMode && !suggestWidgetVisible"
+  }
+]

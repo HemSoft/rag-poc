@@ -1,0 +1,69 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    // Workspace-specific Copilot settings
+    "github.copilot.advanced": {
+      "secret_key": "length_limit",
+      "length_limit": 500,
+      "inlineSuggestCount": 3,
+      "listCount": 10
+    },
+    
+    // Enable more aggressive auto-completion for this workspace
+    "editor.suggest.preview": true,
+    "editor.suggest.showWords": true,
+    "editor.suggest.showKeywords": true,
+    "editor.suggest.showSnippets": true,
+    "editor.suggest.showClasses": true,
+    "editor.suggest.showFunctions": true,
+    "editor.suggest.showConstants": true,
+    "editor.suggest.showConstructors": true,
+    "editor.suggest.showFields": true,
+    "editor.suggest.showVariables": true,
+    "editor.suggest.showInterfaces": true,
+    "editor.suggest.showMethods": true,
+    "editor.suggest.showModules": true,
+    "editor.suggest.showProperties": true,
+    "editor.suggest.showEvents": true,
+    "editor.suggest.showOperators": true,
+    "editor.suggest.showUnits": true,
+    "editor.suggest.showValues": true,
+    "editor.suggest.showEnums": true,
+    "editor.suggest.showEnumMembers": true,
+    "editor.suggest.showReferences": true,
+    "editor.suggest.showFolders": true,
+    "editor.suggest.showTypeParameters": true,
+    "editor.suggest.showIssues": true,
+    "editor.suggest.showUsers": true,
+    "editor.suggest.showColors": true,
+    "editor.suggest.showFiles": true,
+    "editor.suggest.showStructs": true,
+    
+    // C# specific settings for better IntelliSense
+    "omnisharp.useGlobalMono": "never",
+    "omnisharp.useModernNet": true,
+    "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+    "dotnet.symbolSearch.searchReferenceAssemblies": true,
+    
+    // Format on type/paste/save for immediate feedback
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "github.copilot",
+      "github.copilot-chat",
+      "ms-dotnettools.csharp",
+      "ms-dotnettools.vscode-dotnet-runtime"
+    ]
+  }
+}
