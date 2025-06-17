@@ -1,4 +1,4 @@
-$connectionString = "Server=(localdb)\MSSQLLocalDB;Database=RagPocDb;Integrated Security=true;TrustServerCertificate=true;"
+$connectionString = "Server=.;Database=RagPocDb;Integrated Security=true;TrustServerCertificate=true;"
 $connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
 $connection.Open()
 

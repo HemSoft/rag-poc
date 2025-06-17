@@ -119,12 +119,10 @@ public class RagService : IRagService
             if (string.IsNullOrWhiteSpace(content))
             {
                 return "No content extracted from website";
-            }
-
-            Console.WriteLine($"Extracted {content.Length} characters");            // Create document model
+            }            Console.WriteLine($"Extracted {content.Length} characters");            // Create document model
             var document = new Document
             {
-                FileName = $"{new Uri(url).Host} - {documentTitle}",
+                FileName = GenerateUniqueWebFileName(url, documentTitle),
                 FilePath = url,
                 Content = content,
                 FileType = "web"
@@ -285,6 +283,102 @@ Answer:";            Console.WriteLine("Generating response...");
         {
             return "Web Page";
         }
+    }    private string GenerateUniqueWebFileName(string url, string documentTitle)
+    {
+        try
+        {
+            var uri = new Uri(url);
+            var host = uri.Host;
+            var path = uri.AbsolutePath;
+            var query = uri.Query;
+            
+            // Clean up the document title (remove/replace problematic characters)
+            var cleanTitle = CleanFileName(documentTitle);
+            
+            // Create a more descriptive and unique filename using the full URL path
+            var pathSegments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            
+            // For root path, use host + title + timestamp for uniqueness
+            if (pathSegments.Length == 0)
+            {
+                return $"{host} - {cleanTitle} - {DateTime.UtcNow:yyyyMMdd-HHmmss}";
+            }
+            
+            // Build a meaningful path representation
+            var meaningfulPath = string.Join("-", pathSegments.Take(4)); // Take up to 4 segments to avoid too long names
+            var cleanPath = CleanFileName(meaningfulPath);
+            
+            // Include query parameters if they exist and are short enough
+            var queryPart = "";
+            if (!string.IsNullOrEmpty(query) && query.Length <= 50)
+            {
+                queryPart = " " + CleanFileName(query);
+            }
+            
+            // Create filename with host, path, and title for maximum uniqueness
+            var baseFileName = $"{host} - {cleanPath} - {cleanTitle}{queryPart}";
+            
+            // If the filename is too long, truncate intelligently
+            if (baseFileName.Length > 150)
+            {
+                // Try with shorter path (first 2 segments)
+                var shorterPath = string.Join("-", pathSegments.Take(2));
+                var cleanShorterPath = CleanFileName(shorterPath);
+                baseFileName = $"{host} - {cleanShorterPath} - {cleanTitle}";
+                
+                // If still too long, use hash of full path
+                if (baseFileName.Length > 150)
+                {
+                    var pathHash = Math.Abs(path.GetHashCode()).ToString("X6");
+                    baseFileName = $"{host} - {pathHash} - {cleanTitle}";
+                }
+            }
+            
+            return baseFileName;
+        }
+        catch
+        {
+            // Fallback to simple format if URL parsing fails
+            return $"Web Content - {CleanFileName(documentTitle)} - {DateTime.UtcNow:yyyyMMdd-HHmmss}";
+        }
+    }
+      private string CleanFileName(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return "Untitled";
+            
+        // Remove or replace characters that are problematic in filenames or database
+        var cleaned = input.Trim()
+            .Replace('/', '-')
+            .Replace('\\', '-')
+            .Replace(':', '-')
+            .Replace('*', '-')
+            .Replace('?', '_')
+            .Replace('"', '\'')
+            .Replace('<', '(')
+            .Replace('>', ')')
+            .Replace('|', '-')
+            .Replace('#', '-')
+            .Replace('%', '-')
+            .Replace('&', '_')
+            .Replace('=', '_');
+            
+        // Replace multiple consecutive dashes/underscores with single ones
+        while (cleaned.Contains("--"))
+            cleaned = cleaned.Replace("--", "-");
+        while (cleaned.Contains("__"))
+            cleaned = cleaned.Replace("__", "_");
+        
+        // Remove leading/trailing dashes and underscores
+        cleaned = cleaned.Trim('-', '_');
+        
+        // Limit length to reasonable size
+        if (cleaned.Length > 80)
+        {
+            cleaned = cleaned.Substring(0, 80).Trim('-', '_');
+        }
+        
+        return string.IsNullOrWhiteSpace(cleaned) ? "Untitled" : cleaned;
     }
 
     public async Task<List<Document>> GetDocumentsAsync()
