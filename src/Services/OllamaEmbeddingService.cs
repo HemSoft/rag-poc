@@ -15,16 +15,17 @@ public class OllamaEmbeddingService : IEmbeddingService
         _httpClient = httpClient;
         _options = options.Value;
         _httpClient.BaseAddress = new Uri(_options.BaseUrl);
-    }
-
-    public async Task<float[]> GenerateEmbeddingAsync(string text)
+    }    public async Task<float[]> GenerateEmbeddingAsync(string text, string taskType = "search_document")
     {
         try
         {
+            // Add task prefix for nomic-embed-text model
+            var prefixedText = $"{taskType}: {text}";
+            
             var requestBody = new
             {
                 model = _options.EmbeddingModel,
-                prompt = text
+                prompt = prefixedText
             };
 
             var json = JsonSerializer.Serialize(requestBody);
@@ -43,15 +44,13 @@ public class OllamaEmbeddingService : IEmbeddingService
             Console.WriteLine($"Error generating embedding: {ex.Message}");
             return Array.Empty<float>();
         }
-    }
-
-    public async Task<List<float[]>> GenerateEmbeddingsAsync(List<string> texts)
+    }    public async Task<List<float[]>> GenerateEmbeddingsAsync(List<string> texts, string taskType = "search_document")
     {
         var embeddings = new List<float[]>();
         
         foreach (var text in texts)
         {
-            var embedding = await GenerateEmbeddingAsync(text);
+            var embedding = await GenerateEmbeddingAsync(text, taskType);
             embeddings.Add(embedding);
             
             // Small delay to avoid overwhelming the local Ollama instance

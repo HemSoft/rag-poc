@@ -12,9 +12,25 @@ A console application demonstrating Retrieval Augmented Generation (RAG) using S
 
 ## 🛠️ Prerequisites
 
-### 1. SQL Server 2025 Preview
+### 1. SQL Server (Windows Authentication)
+The application supports multiple SQL Server configurations with Windows authentication:
+
+**Option 1: SQL Server LocalDB (Recommended for development)**
+- Install SQL Server LocalDB from [Microsoft Download Center](https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/sql-server-express-localdb)
+- Or install via Visual Studio installer (SQL Server Express LocalDB)
+- No additional configuration needed - Windows authentication is default
+
+**Option 2: SQL Server Express**
+- Download and install [SQL Server Express](https://www.microsoft.com/sql-server/sql-server-downloads)
+- During installation, ensure Windows authentication is enabled
+- Service will run as `MSSQL$SQLEXPRESS`
+
+**Option 3: SQL Server 2025 Preview (Full)**
 - Download and install [SQL Server 2025 Preview](https://info.microsoft.com/ww-landing-sql-server-2025.html)
-- Make sure it's running and accessible on localhost
+- Configure Windows authentication mode during installation
+- Service will run as `MSSQLSERVER`
+
+**⚠️ Note**: The application will automatically try different connection strings and use the first working one.
 
 ### 2. Ollama
 - Install [Ollama](https://ollama.ai) 
@@ -30,23 +46,59 @@ ollama pull llama3.1:8b
 ## 📦 Setup
 
 1. **Clone/Open the project**
-2. **Restore packages**:
+
+2. **Check SQL Server setup** (optional):
+   ```powershell
+   .\setup-sqlserver.ps1
+   ```
+
+3. **Restore packages**:
    ```bash
    dotnet restore
    ```
 
-3. **Update connection string** (if needed) in `appsettings.json`:
+4. **Connection strings** are pre-configured in `appsettings.json` for Windows authentication:
    ```json
    {
      "ConnectionStrings": {
-       "DefaultConnection": "Server=localhost;Database=RagPocDb;Integrated Security=true;TrustServerCertificate=true;"
+       "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=RagPocDb;Integrated Security=true;TrustServerCertificate=true;Connection Timeout=30;",
+       "SqlServerExpress": "Server=.\\SQLEXPRESS;Database=RagPocDb;Integrated Security=true;TrustServerCertificate=true;Connection Timeout=30;",
+       "LocalHost": "Server=localhost;Database=RagPocDb;Integrated Security=true;TrustServerCertificate=true;Connection Timeout=30;"
      }
    }
    ```
 
-4. **Run the application**:
+5. **Run the application**:
    ```bash
    dotnet run
+   ```
+
+## 🔧 Troubleshooting Database Connection
+
+If you encounter database connection issues:
+
+1. **Check SQL Server services are running**:
+   ```powershell
+   Get-Service | Where-Object {$_.Name -like "*SQL*"}
+   ```
+
+2. **For LocalDB issues**:
+   ```bash
+   sqllocaldb info
+   sqllocaldb start MSSQLLocalDB
+   ```
+
+3. **Verify Windows authentication**:
+   - Ensure your Windows user has access to SQL Server
+   - Check SQL Server is configured for Windows authentication mode
+
+4. **Test connection manually**:
+   ```bash
+   sqlcmd -S (localdb)\MSSQLLocalDB -E
+   # or
+   sqlcmd -S .\SQLEXPRESS -E
+   # or  
+   sqlcmd -S localhost -E
    ```
 
 ## 🎯 Usage
@@ -54,6 +106,10 @@ ollama pull llama3.1:8b
 ### First Run
 1. The app will automatically create the database and tables
 2. Test Ollama connection (option 6) to ensure models are working
+3. **Process this README.md file** (option 1) to test the system:
+   - Choose option 1 (Process Document)
+   - Enter the path: `README.md` or the full path to this README file
+   - This will allow you to ask questions about the project configuration
 
 ### Processing Documents
 - **Option 1**: Process local files (PDF, DOCX, TXT, MD)

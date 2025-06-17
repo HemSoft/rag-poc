@@ -9,10 +9,10 @@ namespace RagPoc.Extensions;
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddRagServices(this IServiceCollection services, IConfiguration configuration)
-    {
-        // Configuration
+    {        // Configuration
         services.Configure<RagOptions>(configuration.GetSection(RagOptions.SectionName));
-        services.Configure<OllamaOptions>(configuration.GetSection(OllamaOptions.SectionName));        // HTTP Client
+        services.Configure<OllamaOptions>(configuration.GetSection(OllamaOptions.SectionName));
+        services.Configure<WebCrawlerOptions>(configuration.GetSection(WebCrawlerOptions.SectionName));// HTTP Client
         services.AddHttpClient<IWebScrapingService, WebScrapingService>();
         services.AddHttpClient<IEmbeddingService, OllamaEmbeddingService>();
         services.AddHttpClient<IRagService, RagService>();

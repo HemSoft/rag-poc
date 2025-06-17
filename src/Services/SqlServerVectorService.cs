@@ -2,33 +2,74 @@ using Microsoft.Data.SqlClient;
 using RagPoc.Models;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using System.Linq;
 
 namespace RagPoc.Services;
 
 public class SqlServerVectorService : IVectorService
 {
     private readonly string _connectionString;
+    private readonly IConfiguration _configuration;
 
     public SqlServerVectorService(IConfiguration configuration)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection") 
-                          ?? throw new InvalidOperationException("Connection string not found");
+        _configuration = configuration;
+        _connectionString = GetWorkingConnectionString();
     }
 
-    public async Task InitializeDatabaseAsync()
+    private string GetWorkingConnectionString()
     {
-        await using var connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync();
+        var connectionStrings = new[]
+        {
+            _configuration.GetConnectionString("DefaultConnection"),
+            _configuration.GetConnectionString("SqlServerExpress"),
+            _configuration.GetConnectionString("LocalHost")
+        };
 
-        // Create database if it doesn't exist
-        var createDbSql = @"
-            IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'RagPocDb')
-            BEGIN
-                CREATE DATABASE RagPocDb;
-            END";
+        foreach (var connStr in connectionStrings.Where(cs => !string.IsNullOrEmpty(cs)))
+        {
+            try
+            {
+                var builder = new SqlConnectionStringBuilder(connStr!)
+                {
+                    IntegratedSecurity = true,
+                    TrustServerCertificate = true,
+                    ConnectTimeout = 30,
+                    CommandTimeout = 60
+                };
 
-        await using var createDbCmd = new SqlCommand(createDbSql, connection);
-        await createDbCmd.ExecuteNonQueryAsync();
+                // Test the connection
+                using var connection = new SqlConnection(builder.ConnectionString);
+                connection.Open();
+                connection.Close();
+                
+                Console.WriteLine($"Successfully connected using: {builder.DataSource}");
+                return builder.ConnectionString;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Connection attempt failed for {connStr}: {ex.Message}");
+                continue;
+            }
+        }
+
+        throw new InvalidOperationException("Could not establish database connection with Windows authentication. Please ensure SQL Server (LocalDB, Express, or full version) is installed and running.");
+    }    public async Task InitializeDatabaseAsync()
+    {
+        try
+        {
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            // Create database if it doesn't exist
+            var createDbSql = @"
+                IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'RagPocDb')
+                BEGIN
+                    CREATE DATABASE RagPocDb;
+                END";
+
+            await using var createDbCmd = new SqlCommand(createDbSql, connection);
+            await createDbCmd.ExecuteNonQueryAsync();
 
         // Switch to the RagPocDb database
         await connection.ChangeDatabaseAsync("RagPocDb");
@@ -48,9 +89,7 @@ public class SqlServerVectorService : IVectorService
             END";
 
         await using var createDocumentsCmd = new SqlCommand(createDocumentsTableSql, connection);
-        await createDocumentsCmd.ExecuteNonQueryAsync();
-
-        // Create DocumentChunks table with vector column
+        await createDocumentsCmd.ExecuteNonQueryAsync();        // Create DocumentChunks table - use nvarchar for embeddings (compatible with all SQL Server versions)
         var createChunksTableSql = @"
             IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'DocumentChunks')
             BEGIN
@@ -59,7 +98,7 @@ public class SqlServerVectorService : IVectorService
                     DocumentId int NOT NULL,
                     ChunkText nvarchar(max) NOT NULL,
                     ChunkIndex int NOT NULL,
-                    Embedding vector(768) NULL,
+                    Embedding nvarchar(max) NULL,
                     CreatedAt datetime2 DEFAULT GETDATE(),
                     FOREIGN KEY (DocumentId) REFERENCES Documents(Id) ON DELETE CASCADE
                 );
@@ -83,9 +122,12 @@ public class SqlServerVectorService : IVectorService
         catch (Exception ex)
         {
             Console.WriteLine($"Note: Could not create vector index (this is expected if not using SQL Server 2025): {ex.Message}");
+        }        Console.WriteLine("Database initialized successfully!");
         }
-
-        Console.WriteLine("Database initialized successfully!");
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to initialize database. Error: {ex.Message}. Please ensure SQL Server is running and you have proper Windows authentication permissions.", ex);
+        }
     }
 
     public async Task<int> StoreDocumentAsync(Document document)
@@ -141,64 +183,10 @@ public class SqlServerVectorService : IVectorService
             await transaction.RollbackAsync();
             throw;
         }
-    }
-
-    public async Task<List<DocumentChunk>> SearchSimilarChunksAsync(float[] queryEmbedding, int maxResults = 5)
+    }    public async Task<List<DocumentChunk>> SearchSimilarChunksAsync(float[] queryEmbedding, int maxResults = 5)
     {
-        await using var connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync();
-        await connection.ChangeDatabaseAsync("RagPocDb");
-
-        var chunks = new List<DocumentChunk>();
-
-        // Try vector distance search first (SQL Server 2025)
-        try
-        {
-            var vectorSearchSql = @"
-                SELECT TOP (@MaxResults) 
-                    dc.Id, dc.DocumentId, dc.ChunkText, dc.ChunkIndex, dc.Embedding,
-                    d.FileName, d.FilePath, d.FileType
-                FROM DocumentChunks dc
-                INNER JOIN Documents d ON dc.DocumentId = d.Id
-                WHERE dc.Embedding IS NOT NULL
-                ORDER BY VECTOR_DISTANCE('cosine', dc.Embedding, @QueryEmbedding)";
-
-            await using var cmd = new SqlCommand(vectorSearchSql, connection);
-            cmd.Parameters.AddWithValue("@MaxResults", maxResults);
-            
-            // Convert float array to proper vector format for SQL Server
-            var vectorString = "[" + string.Join(",", queryEmbedding) + "]";
-            cmd.Parameters.AddWithValue("@QueryEmbedding", vectorString);
-
-            await using var reader = await cmd.ExecuteReaderAsync();            while (await reader.ReadAsync())
-            {
-                var chunk = new DocumentChunk
-                {
-                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                    DocumentId = reader.GetInt32(reader.GetOrdinal("DocumentId")),
-                    ChunkText = reader.GetString(reader.GetOrdinal("ChunkText")),
-                    ChunkIndex = reader.GetInt32(reader.GetOrdinal("ChunkIndex")),
-                    Document = new Document
-                    {
-                        Id = reader.GetInt32(reader.GetOrdinal("DocumentId")),
-                        FileName = reader.GetString(reader.GetOrdinal("FileName")),
-                        FilePath = reader.GetString(reader.GetOrdinal("FilePath")),
-                        FileType = reader.GetString(reader.GetOrdinal("FileType"))
-                    }
-                };
-
-                chunks.Add(chunk);
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Vector search failed, falling back to similarity calculation: {ex.Message}");
-            
-            // Fallback: Load all chunks and calculate similarity in memory
-            chunks = await GetAllChunksWithSimilarityAsync(queryEmbedding, maxResults);
-        }
-
-        return chunks;
+        // Since we're using LocalDB/Express (not SQL Server 2025), use similarity calculation directly
+        return await GetAllChunksWithSimilarityAsync(queryEmbedding, maxResults);
     }
 
     private async Task<List<DocumentChunk>> GetAllChunksWithSimilarityAsync(float[] queryEmbedding, int maxResults)

@@ -68,9 +68,9 @@ public class RagService : IRagService
             var chunks = _documentProcessor.ChunkText(content, _ragOptions.ChunkSize, _ragOptions.ChunkOverlap);
             Console.WriteLine($"Created {chunks.Count} chunks");
 
-            // Generate embeddings for chunks
+            // Generate embeddings for chunks (documents)
             Console.WriteLine("Generating embeddings...");
-            var embeddings = await _embeddingService.GenerateEmbeddingsAsync(chunks);
+            var embeddings = await _embeddingService.GenerateEmbeddingsAsync(chunks, "search_document");
 
             // Create document chunks
             for (int i = 0; i < chunks.Count; i++)
@@ -92,27 +92,39 @@ public class RagService : IRagService
         {
             return $"Error processing document: {ex.Message}";
         }
-    }
-
-    public async Task<string> ProcessWebContentAsync(string url)
+    }    public async Task<string> ProcessWebContentAsync(string url)
     {
         try
         {
-            Console.WriteLine($"Scraping website: {url}");
+            Console.WriteLine($"🌐 Processing website: {url}");
+            Console.Write("Do you want to crawl multiple pages? (y/N): ");
+            var crawlResponse = Console.ReadLine()?.ToLowerInvariant();
             
-            // Scrape content from website
-            var content = await _webScrapingService.ScrapeWebsiteAsync(url);
+            string content;
+            string documentTitle;
+            
+            if (crawlResponse == "y" || crawlResponse == "yes")
+            {
+                Console.WriteLine("🕷️ Starting smart crawl...");
+                content = await _webScrapingService.CrawlWebsiteAsync(url);
+                documentTitle = $"Crawled Content";
+            }
+            else
+            {
+                Console.WriteLine("📄 Scraping single page...");
+                content = await _webScrapingService.ScrapeWebsiteAsync(url);
+                documentTitle = GetPageTitle(content);
+            }
+            
             if (string.IsNullOrWhiteSpace(content))
             {
                 return "No content extracted from website";
             }
 
-            Console.WriteLine($"Extracted {content.Length} characters");
-
-            // Create document model
+            Console.WriteLine($"Extracted {content.Length} characters");            // Create document model
             var document = new Document
             {
-                FileName = new Uri(url).Host,
+                FileName = $"{new Uri(url).Host} - {documentTitle}",
                 FilePath = url,
                 Content = content,
                 FileType = "web"
@@ -120,11 +132,9 @@ public class RagService : IRagService
 
             // Chunk the text
             var chunks = _documentProcessor.ChunkText(content, _ragOptions.ChunkSize, _ragOptions.ChunkOverlap);
-            Console.WriteLine($"Created {chunks.Count} chunks");
-
-            // Generate embeddings for chunks
+            Console.WriteLine($"Created {chunks.Count} chunks");            // Generate embeddings for chunks
             Console.WriteLine("Generating embeddings...");
-            var embeddings = await _embeddingService.GenerateEmbeddingsAsync(chunks);
+            var embeddings = await _embeddingService.GenerateEmbeddingsAsync(chunks, "search_document");
 
             // Create document chunks
             for (int i = 0; i < chunks.Count; i++)
@@ -151,11 +161,10 @@ public class RagService : IRagService
     public async Task<ChatMessage> ChatAsync(string question)
     {
         try
-        {
-            Console.WriteLine("Generating embedding for question...");
+        {            Console.WriteLine("Generating embedding for question...");
             
-            // Generate embedding for the question
-            var questionEmbedding = await _embeddingService.GenerateEmbeddingAsync(question);
+            // Generate embedding for the question (query)
+            var questionEmbedding = await _embeddingService.GenerateEmbeddingAsync(question, "search_query");
             if (questionEmbedding == null || questionEmbedding.Length == 0)
             {
                 return new ChatMessage
@@ -179,21 +188,24 @@ public class RagService : IRagService
                 };
             }
 
-            Console.WriteLine($"Found {similarChunks.Count} relevant chunks");
-
-            // Build context from similar chunks
+            Console.WriteLine($"Found {similarChunks.Count} relevant chunks");            // Build context from similar chunks
             var contextBuilder = new StringBuilder();
             var sources = new List<string>();
             
             foreach (var chunk in similarChunks)
             {
-                contextBuilder.AppendLine($"Source: {chunk.Document.FileName}");
+                // Show source with URL for web documents
+                var sourceInfo = chunk.Document.FileType == "web" 
+                    ? $"{chunk.Document.FileName} ({chunk.Document.FilePath})"
+                    : chunk.Document.FileName;
+                    
+                contextBuilder.AppendLine($"Source: {sourceInfo}");
                 contextBuilder.AppendLine(chunk.ChunkText);
                 contextBuilder.AppendLine();
                 
-                if (!sources.Contains(chunk.Document.FileName))
+                if (!sources.Contains(sourceInfo))
                 {
-                    sources.Add(chunk.Document.FileName);
+                    sources.Add(sourceInfo);
                 }
             }
 
@@ -246,6 +258,32 @@ Answer:";            Console.WriteLine("Generating response...");
                 Role = "assistant",
                 Content = $"Error generating response: {ex.Message}"
             };
+        }
+    }
+
+    private string GetPageTitle(string content)
+    {
+        try
+        {
+            // Simple extraction of title from HTML content
+            var titleMatch = System.Text.RegularExpressions.Regex.Match(content, @"<title[^>]*>([^<]+)</title>", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (titleMatch.Success)
+            {
+                return titleMatch.Groups[1].Value.Trim();
+            }
+            
+            // Fallback: look for h1 tag
+            var h1Match = System.Text.RegularExpressions.Regex.Match(content, @"<h1[^>]*>([^<]+)</h1>", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (h1Match.Success)
+            {
+                return h1Match.Groups[1].Value.Trim();
+            }
+            
+            return "Web Page";
+        }
+        catch
+        {
+            return "Web Page";
         }
     }
 

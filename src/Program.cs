@@ -38,6 +38,7 @@ class Program
         {
             // Initialize database
             Console.WriteLine("Initializing database...");
+            Console.WriteLine("Testing database connection with Windows authentication...");
             await vectorService.InitializeDatabaseAsync();
             Console.WriteLine("✅ Database ready!");
             Console.WriteLine();
@@ -355,4 +356,20 @@ public class OllamaModel
 {
     public string name { get; set; } = string.Empty;
     public long size { get; set; }
+}
+
+public class OllamaEmbeddingResponse
+{
+    public double[]? embedding { get; set; }
+}
+
+public class OllamaChatResponse
+{
+    public OllamaMessage? message { get; set; }
+}
+
+public class OllamaMessage
+{
+    public string role { get; set; } = string.Empty;
+    public string content { get; set; } = string.Empty;
 }

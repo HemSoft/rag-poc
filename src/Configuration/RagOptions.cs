@@ -18,3 +18,13 @@ public class OllamaOptions
     public string EmbeddingModel { get; set; } = "nomic-embed-text";
     public string ChatModel { get; set; } = "llama3.1:8b";
 }
+
+public class WebCrawlerOptions
+{
+    public const string SectionName = "WebCrawler";
+    
+    public int MaxDepth { get; set; } = 2;
+    public int MaxPages { get; set; } = 20;
+    public int DelayBetweenRequests { get; set; } = 1000;
+    public bool SameOriginOnly { get; set; } = true;
+}

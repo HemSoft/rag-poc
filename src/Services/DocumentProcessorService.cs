@@ -4,6 +4,7 @@ using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Markdig;
 using System.Text;
+using System.Text.RegularExpressions;
 using RagPoc.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -116,50 +117,31 @@ public class DocumentProcessorService : IDocumentProcessor
         {
             throw new InvalidOperationException($"Failed to extract text from DOCX: {ex.Message}", ex);
         }
-    }
-
-    private async Task<string> ExtractMarkdownTextAsync(string filePath)
+    }    private async Task<string> ExtractMarkdownTextAsync(string filePath)
     {
         try
         {
             var markdown = await File.ReadAllTextAsync(filePath);
+            
+            // Simple approach: Use Markdig to convert to HTML, then extract text
+            // This preserves more content than trying to parse the AST
             var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
-            var document = Markdown.Parse(markdown, pipeline);
+            var html = Markdown.ToHtml(markdown, pipeline);
             
-            // Extract plain text from markdown
-            var plainText = new StringBuilder();
-            ExtractTextFromMarkdownDocument(document, plainText);
+            // Convert HTML to plain text by removing tags
+            var plainText = System.Text.RegularExpressions.Regex.Replace(html, "<.*?>", " ");
             
-            return plainText.ToString();
+            // Clean up extra whitespace
+            plainText = System.Text.RegularExpressions.Regex.Replace(plainText, @"\s+", " ");
+            plainText = System.Text.RegularExpressions.Regex.Replace(plainText, @"\n\s*\n", "\n\n");
+            
+            return plainText.Trim();
         }
         catch (Exception ex)
         {
             throw new InvalidOperationException($"Failed to extract text from Markdown: {ex.Message}", ex);
         }
-    }
-
-    private void ExtractTextFromMarkdownDocument(Markdig.Syntax.MarkdownDocument document, StringBuilder text)
-    {
-        foreach (var block in document)
-        {
-            if (block is Markdig.Syntax.LeafBlock leafBlock)
-            {
-                if (leafBlock.Inline != null)
-                {
-                    foreach (var inline in leafBlock.Inline)
-                    {
-                        if (inline is Markdig.Syntax.Inlines.LiteralInline literal)
-                        {
-                            text.Append(literal.Content);
-                        }
-                    }
-                }
-                text.AppendLine();
-            }
-        }
-    }
-
-    private List<string> SplitIntoSentences(string text)
+    }    private List<string> SplitIntoSentences(string text)
     {
         var sentences = new List<string>();
         var sentenceEnders = new[] { '.', '!', '?' };

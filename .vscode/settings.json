@@ -39,7 +39,6 @@
   
   // IntelliSense settings for C#
   "omnisharp.enableEditorConfigSupport": true,
-  "omnisharp.enableImportCompletion": true,
   "omnisharp.enableRoslynAnalyzers": true,
   
   // Auto-save for faster feedback
@@ -51,5 +50,6 @@
   
   // Copilot Chat settings
   "github.copilot.chat.followUps": "always",
-  "github.copilot.chat.welcomeMessage": "always"
+  "github.copilot.chat.welcomeMessage": "always",
+  "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true
 }
